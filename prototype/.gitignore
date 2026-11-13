@@ -1,0 +1,5 @@
+!public/
+public/*
+!public/media/
+public/media/*
+!public/media/*.mp3
