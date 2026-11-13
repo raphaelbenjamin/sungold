@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Segmented, Switch } from "../components/ui";
 import { api, errorText } from "../lib/api";
@@ -9,7 +9,7 @@ import { needsTraining, readTrainingDeck, type Difficulty, type TrainingCard, ty
 import type { LangCode, Term } from "../lib/types";
 import "../styles/training.css";
 
-type RecallFilter = "all" | "missed" | "correct" | "new";
+type RecallFilter = "all" | "unchecked" | "checked";
 
 export function Training() {
   const lang = useApp((s) => s.lang)();
@@ -30,7 +30,11 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
   const revealPicker = (
     <label className="training-shuffle">
       {t("Révélation automatique", "Auto-reveal")}
-      <select className="input" value={delay} onChange={(e) => void setSetting("training_reveal_delay", e.target.value).catch((error) => toast(errorText(error), "error"))}>
+      <select className="input" value={delay} onChange={(e) => {
+        const value = e.currentTarget.value;
+        if (drill) e.currentTarget.blur();
+        void setSetting("training_reveal_delay", value).catch((error) => toast(errorText(error), "error"));
+      }}>
         <option value="0">{t("Désactivée", "Off")}</option>
         {[1, 2, 3, 5].map((seconds) => <option key={seconds} value={seconds}>{seconds} s</option>)}
       </select>
@@ -103,17 +107,11 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
   const eligible = activeWords.filter(({ term }) => difficulty === "all" || deck[term]?.difficulty === difficulty);
   const matches = eligible.filter(({ term }) => {
     const recalled = deck[term]?.recalled;
-    return filter === "all" || (filter === "new" && recalled === undefined) ||
-      (filter === "missed" && recalled === false) || (filter === "correct" && recalled === true);
+    return filter === "all" || (filter === "checked" ? recalled === true : recalled !== true);
   });
-  const practice = matches.filter(({ term, translation }) => deck[term]?.definition || translation);
+  const practice = matches.filter(({ term, translation }) => deck[term]?.definition?.trim() || translation.trim());
   const card = drill?.[position];
   const entry = card ? deck[card.term] : undefined;
-  useEffect(() => {
-    if (!card || ![1, 2, 3, 5].includes(Number(delay))) return;
-    const timer = window.setTimeout(() => setRevealed(true), Number(delay) * 1000);
-    return () => window.clearTimeout(timer);
-  }, [card, position, delay]);
   const archive = (term: string, value: boolean, translation: string) => save([[term, {
     archived: value,
     ...(value && !deck[term]?.definition && translation ? { definition: translation } : {}),
@@ -135,23 +133,31 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
       grading.current = false;
     }
   };
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!card) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey ||
+      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey ||
           (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable]"))) return;
       if (event.key === "ArrowDown") {
         event.preventDefault();
+        event.stopPropagation();
         setRevealed(true);
-      }
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
-        void grade(event.key === "ArrowRight");
+        event.stopPropagation();
+        if (!event.repeat) void grade(event.key === "ArrowRight");
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   });
+  useEffect(() => {
+    const seconds = Number(delay);
+    if (!card || revealed || ![1, 2, 3, 5].includes(seconds)) return;
+    const timer = window.setTimeout(() => setRevealed(true), seconds * 1000);
+    return () => window.clearTimeout(timer);
+  }, [card, position, delay, revealed]);
+
   const start = () => {
     const cards = [...practice];
     if (shuffle) {
@@ -160,15 +166,16 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
         [cards[i], cards[j]] = [cards[j], cards[i]];
       }
     }
-    setPosition(0);
     setRevealed(false);
+    setPosition(0);
     setDrill(cards);
   };
-  const actions: { task: TrainingTask; label: string; targets: Term[] }[] = [
-    { task: "difficulty", label: t("Classer les nouveaux mots", "Sort new words"), targets: needsTraining(activeWords, deck, "difficulty") },
-    { task: "definition", label: t("Créer les définitions", "Generate definitions"), targets: needsTraining(eligible, deck, "definition") },
-    { task: "example", label: t("Créer les exemples", "Generate examples"), targets: needsTraining(eligible, deck, "example") },
-  ];
+  const unsorted = needsTraining(activeWords, deck, "difficulty");
+  const labels = {
+    difficulty: t("Classer les nouveaux mots", "Sort new words"),
+    definition: t("Créer les définitions", "Generate definitions"),
+    example: t("Créer les exemples", "Generate examples"),
+  };
 
   return (
     <div className="view training-view">
@@ -188,19 +195,9 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
           </div>
           {card ? (
             <>
-              <button type="button" key={card.term} className={`training-flashcard${revealed ? " revealed" : ""}`}
-                aria-expanded={revealed} onClick={() => setRevealed((v) => !v)}>
-                <strong lang={lang} dir="auto">{card.term}</strong>
-                {entry?.example && <span className="training-example" lang={lang} dir="auto">
-                  {highlightExample(entry.example, entry.highlight || card.term)}
-                </span>}
-                <span className="training-answer" lang="en">
-                  <b>{entry?.definition || card.translation}</b>
-                  {entry?.literal && <span>{entry.literal}</span>}
-                  {entry?.note && <small>{entry.note}</small>}
-                </span>
-              </button>
+              <RecallCard key={position} card={card} entry={entry} lang={lang} revealed={revealed} reveal={() => setRevealed(true)} />
               <div className="training-toolbar">
+                <button className="btn soft" disabled={revealed} onClick={() => setRevealed(true)}>↓ {t("Révéler", "Reveal")}</button>
                 <button className="btn ghost" onClick={() => void grade("archive")}>{t("Archiver", "Archive")}</button>
                 <button className="btn soft" onClick={() => void grade(false)}>← {t("Je ne savais pas", "Didn’t know")}</button>
                 <button className="btn primary" onClick={() => void grade(true)}>{t("Je savais", "Knew it")} →</button>
@@ -220,13 +217,12 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
       ) : (
         <>
           <div className="training-toolbar">
-            {actions.map(({ task, label, targets }) => (
-              <button key={task} className="btn soft" disabled={!!busy || !targets.length} onClick={() => void generate(task, targets)}>
-                {label} · {targets.length}
-              </button>
-            ))}
-            {busy && <span className="muted" role="status">ChatGPT · {actions.find(({ task }) => task === busy.task)?.label} · {busy.done}/{busy.total}</span>}
+            <button className="btn soft" disabled={!!busy || !unsorted.length} onClick={() => void generate("difficulty", unsorted)}>
+              {labels.difficulty} · {unsorted.length}
+            </button>
+            {busy && <span className="muted" role="status">ChatGPT · {labels[busy.task]} · {busy.done}/{busy.total}</span>}
           </div>
+          <h2 className="training-setup-title">{t("Préparer un exercice", "Set up a drill")}</h2>
           <Segmented id="training-difficulty" label={t("Difficulté", "Difficulty")} value={difficulty}
             onChange={(v) => { setDifficulty(v); setLimit(100); }}
             options={[{ value: "all", label: t("Toutes", "All levels") }, ...tiers]} />
@@ -235,9 +231,8 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
               onChange={(v) => { setFilter(v); setLimit(100); }}
               options={[
                 { value: "all", label: t("Tous", "All words") },
-                { value: "new", label: t("À découvrir", "Unreviewed") },
-                { value: "missed", label: t("Ratés", "Missed") },
-                { value: "correct", label: t("Réussis", "Correct") },
+                { value: "unchecked", label: t("Non cochés", "Unchecked") },
+                { value: "checked", label: t("Cochés", "Checked") },
               ]} />
             <div className="training-shuffle">
               <span>{t("Mélanger", "Shuffle")}</span>
@@ -249,11 +244,19 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
           {matches.length > practice.length && <p className="muted">{t("Les mots sans définition attendent dans la liste. Créez leurs définitions pour les ajouter à l’exercice.", "Words without a definition stay in the list. Generate definitions to include them in the drill.")}</p>}
           <div className="training-list">
             {[...tiers, { value: "unsorted", label: t("Non classés", "Unsorted") }].map(({ value, label }) => {
+              const levelWords = eligible.filter(({ term }) => (deck[term]?.difficulty ?? "unsorted") === value);
+              if (!levelWords.length) return null;
               const group = matches.filter(({ term }) => (deck[term]?.difficulty ?? "unsorted") === value);
-              if (!group.length) return null;
               group.sort((a, b) => Number(deck[a.term]?.recalled === true) - Number(deck[b.term]?.recalled === true));
               return <section key={value}>
-                <h2>{label} <small>{group.length}</small></h2>
+                <div className="training-level-head">
+                  <h2>{label} <small>{levelWords.length}</small></h2>
+                  {(["definition", "example"] as const).map((task) => {
+                    const targets = needsTraining(levelWords, deck, task);
+                    return <button key={task} className="btn sm soft" disabled={!!busy || !targets.length}
+                      onClick={() => void generate(task, targets)}>{labels[task]} · {targets.length}</button>;
+                  })}
+                </div>
                 {group.slice(0, limit).map(({ term, translation }) => {
                   const entry = deck[term];
                   return <motion.div layout="position" key={term} className="training-row">
@@ -276,6 +279,34 @@ function TrainingDeckView({ lang }: { lang: LangCode }) {
         </>
       )}
     </div>
+  );
+}
+
+function RecallCard({ card, entry, lang, revealed, reveal }: {
+  card: Term;
+  entry?: TrainingCard;
+  lang: LangCode;
+  revealed: boolean;
+  reveal(): void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const showAnswer = revealed || hovered;
+
+  return (
+    <button type="button" className="training-flashcard"
+      aria-expanded={showAnswer} onClick={reveal}
+      onPointerEnter={(event) => { if (event.pointerType === "mouse") setHovered(true); }}
+      onPointerLeave={() => setHovered(false)}>
+      <strong lang={lang} dir="auto">{card.term}</strong>
+      {entry?.example && <span className="training-example" lang={lang} dir="auto">
+        {highlightExample(entry.example, entry.highlight || card.term)}
+      </span>}
+      {showAnswer && <span className="training-answer" lang="en">
+        <b>{entry?.definition?.trim() || card.translation.trim()}</b>
+        {entry?.literal && <span>{entry.literal}</span>}
+        {entry?.note && <small>{entry.note}</small>}
+      </span>}
+    </button>
   );
 }
 

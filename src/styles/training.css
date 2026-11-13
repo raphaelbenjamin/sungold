@@ -49,11 +49,7 @@
   overflow-wrap: anywhere;
 }
 .training-flashcard strong { font-size: clamp(32px, 5vw, 60px); font-weight: 600; }
-.training-answer { display: grid; gap: 8px; font-size: 20px; color: var(--muted); visibility: hidden; }
-.training-flashcard:is(.revealed, :focus-visible) .training-answer { visibility: visible; }
-@media (hover: hover) {
-  .training-flashcard:hover .training-answer { visibility: visible; }
-}
+.training-answer { display: grid; gap: 8px; color: var(--muted); }
 .training-shuffle { display: flex; gap: 8px; align-items: center; }
 @media (prefers-reduced-motion: reduce) {
   .training-row { transition: none; }
@@ -73,3 +69,7 @@
 .training-answer small { color: var(--muted); }
 .training-archive { margin-inline-start: auto; flex-shrink: 0; }
 .training-shuffle select { width: auto; }
+
+.training-level-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.training-level-head h2 { margin: 0 auto 0 0; }
+.training-setup-title { font: 600 16px var(--font-ui); margin: 16px 0 8px; }
