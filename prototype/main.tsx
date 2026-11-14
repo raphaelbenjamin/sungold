@@ -19,22 +19,30 @@ import "../src/styles/tour.css";
 import "../src/styles/mobile.css";
 import "./style.css";
 import { App } from "../src/App";
-import { seedPreview } from "./preview-api";
+import { WorkspaceHeader } from "./shell";
+import "./system.css";
 
 const design = new URLSearchParams(location.search).get("design") === "light" ? "folio" : "studio";
 document.documentElement.dataset.design = design;
 document.documentElement.dataset.theme = design === "studio" ? "dark" : "light";
 
-// The demo can show external actions, but never opens a real account, service, or URL.
-window.open = () => null;
-document.addEventListener("click", event => {
-  const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
-  if (link instanceof HTMLAnchorElement && /^(https?:|mailto:)/.test(link.protocol)
-    && link.origin !== location.origin) event.preventDefault();
-}, true);
-
 const root = createRoot(document.getElementById("root")!);
-seedPreview(design).then(() => root.render(<App />)).catch(error => {
-  console.error(error);
-  root.render(<p>The sample workspace could not load. Refresh to try again.</p>);
-});
+function mount() {
+  root.render(<div className="preview-frame"><WorkspaceHeader/><App /></div>);
+}
+
+if (import.meta.env.MODE === "desktop") {
+  document.documentElement.classList.add("sungold-desktop");
+  mount();
+} else {
+  window.open = () => null;
+  document.addEventListener("click", event => {
+    const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    if (link instanceof HTMLAnchorElement && /^(https?:|mailto:)/.test(link.protocol)
+      && link.origin !== location.origin) event.preventDefault();
+  }, true);
+  import("./preview-api").then(({ seedPreview }) => seedPreview(design)).then(mount).catch(error => {
+    console.error(error);
+    root.render(<p>The sample workspace could not load. Refresh to try again.</p>);
+  });
+}

@@ -51,43 +51,37 @@ use tauri::Manager;
 
 #[cfg(desktop)]
 fn desktop_data_dir(path: std::path::PathBuf) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    if path.file_name().and_then(|name| name.to_str()) != Some("com.raphaelbenjamin.umbra") {
-        return Err("Umbra requires its own application data directory".into());
+    if path.file_name().and_then(|name| name.to_str()) != Some("com.raphaelbenjamin.sungold") {
+        return Err("sungold requires its own application data directory".into());
     }
-    // Open previous Umbra libraries in place so their database and media paths stay valid.
-    let legacy = path.with_file_name("com.raphaelbenjamin.lumenhebrew");
-    let selected = if !db::path(&path).exists() && std::fs::symlink_metadata(&legacy).is_ok() { legacy } else { path };
-    if std::fs::symlink_metadata(&selected).is_ok_and(|metadata| metadata.is_symlink()) {
-        return Err("Umbra requires a data directory that is not a symbolic link".into());
+    for entry in [&path, &db::path(&path)] {
+        if std::fs::symlink_metadata(entry).is_ok_and(|metadata| metadata.is_symlink()) {
+            return Err("sungold does not open a linked application data directory or database".into());
+        }
     }
-    Ok(selected)
+    Ok(path)
 }
 
 #[cfg(all(test, desktop))]
 #[test]
-fn desktop_identity_preserves_the_previous_umbra_library() {
-    let base = std::env::temp_dir().join(format!("umbra-identity-test-{}", std::process::id()));
-    let current = base.join("com.raphaelbenjamin.umbra");
-    let previous = base.join("com.raphaelbenjamin.lumenhebrew");
-    let official = base.join("app.lumen.reader");
+fn desktop_identity_accepts_only_sungold() {
+    let base = std::env::temp_dir();
+    let current = base.join("com.raphaelbenjamin.sungold");
     assert_eq!(desktop_data_dir(current.clone()).unwrap(), current);
-    std::fs::create_dir_all(&previous).unwrap();
-    std::fs::create_dir_all(&current).unwrap();
-    assert_eq!(desktop_data_dir(current.clone()).unwrap(), previous);
-    std::fs::write(db::path(&current), []).unwrap();
-    assert_eq!(desktop_data_dir(current.clone()).unwrap(), current);
-    assert!(desktop_data_dir(official).is_err());
-    std::fs::remove_dir_all(base).unwrap();
+    for other in ["com.raphaelbenjamin.umbra", "com.raphaelbenjamin.lumenhebrew", "app.lumen.reader"] {
+        assert!(desktop_data_dir(base.join(other)).is_err());
+    }
 }
 
 // iPhone et iPad : point d'entrée appelé par le projet Xcode (gen/apple)
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init()).plugin(tauri_plugin_opener::init());
-    #[cfg(target_os = "macos")]
-    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     builder
         .setup(|app| {
+            if app.config().identifier != "com.raphaelbenjamin.sungold" {
+                return Err("sungold must use its own application identifier".into());
+            }
             let data_dir = app.path().app_data_dir()?;
             #[cfg(desktop)]
             let data_dir = desktop_data_dir(data_dir)?;
@@ -227,7 +221,7 @@ pub fn run() {
             commands::text_stats,
         ])
         .build(tauri::generate_context!())
-        .expect("Umbra couldn't start")
+        .expect("sungold couldn't start")
         .run(|app, event| {
             // dernière sauvegarde en quittant, si la progression a changé
             if let tauri::RunEvent::Exit = event {

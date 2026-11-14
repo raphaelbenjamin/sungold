@@ -4,7 +4,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Umbra",
+        "title": "sungold",
         "width": 1380,
         "height": 880,
         "minWidth": 980,
@@ -33,7 +33,7 @@
         "installMode": "currentUser",
         "languages": ["French", "English"],
         "displayLanguageSelector": false,
-        "installerIcon": "icons/icon.ico",
+        "installerIcon": "icons/sungold/icon.ico",
         "headerImage": "nsis/header.bmp",
         "sidebarImage": "nsis/sidebar.bmp"
       }

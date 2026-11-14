@@ -1,20 +1,20 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Umbra",
+  "productName": "sungold",
   "version": "2.0.24",
-  "identifier": "com.raphaelbenjamin.umbra",
+  "identifier": "com.raphaelbenjamin.sungold",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1428",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
+    "beforeDevCommand": "npm run sungold:dev",
+    "devUrl": "http://127.0.0.1:4186",
+    "beforeBuildCommand": "npm run sungold:build",
+    "frontendDist": "../prototype/dist"
   },
   "app": {
     "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
-        "title": "Umbra",
+        "title": "sungold",
         "width": 1380,
         "height": 880,
         "minWidth": 980,
@@ -55,11 +55,11 @@
     "shortDescription": "Learn languages by reading and listening",
     "copyright": "© 2026 Ulysse Rives",
     "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/sungold/32x32.png",
+      "icons/sungold/128x128.png",
+      "icons/sungold/128x128@2x.png",
+      "icons/sungold/icon.icns",
+      "icons/sungold/icon.ico"
     ],
     "resources": {
       "resources/dicts/*": "dicts/",
@@ -89,14 +89,5 @@
       }
     },
     "createUpdaterArtifacts": false
-  },
-  "plugins": {
-    "updater": {
-      "requireSignedVersion": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZCQjQ0NThFRjQ1MTMyMDMKUldRRE1sSDBqa1cwK3cvYkNlZlNiWlBuSFdtVFdBeHVSZnJIWmdtVGFDNDhKVXdGQWpVVks4a08K",
-      "endpoints": [
-        "https://github.com/raphaelbenjamin/umbra/releases/latest/download/latest.json"
-      ]
-    }
   }
 }

@@ -95,7 +95,7 @@ export function Onboarding() {
   const restoring = useBackup((s) => s.restoring);
   const restoreError = useBackup((s) => s.restoreError);
   const [found, setFound] = useState<BackupInfo[] | null>(null);
-  // iPhone et iPad : le dossier « Umbra » d'iCloud Drive se choisit d'abord dans l'app Fichiers
+  // iPhone et iPad : le dossier « sungold » d'iCloud Drive se choisit d'abord dans l'app Fichiers
   const [needFolder, setNeedFolder] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
@@ -338,7 +338,7 @@ export function Onboarding() {
       if (dir !== null) await setSetting("backup_dir", dir);
     }
     if (offerBackup) await setSetting("backup_on", saveCloud ? "1" : "0");
-    // les nouveautés de cette version ne concernent pas qui découvre Umbra
+    // les nouveautés de cette version ne concernent pas qui découvre sungold
     const version = useApp.getState().info?.version.match(/\d+\.\d+\.\d+/)?.[0];
     if (version) await setSetting("seen_version", version);
     await setSetting("onboarded", "1");
@@ -418,8 +418,8 @@ export function Onboarding() {
         <AnimatePresence mode="wait">
           {n === 0 && (
             <motion.div key="0" ref={measureStep} className="ob-step welcome" style={below} {...stepAnim}>
-              <h1 className="ob-word" aria-label="Umbra">
-                {"Umbra".split("").map((c, i) => (
+              <h1 className="ob-word" aria-label="sungold">
+                {"sungold".split("").map((c, i) => (
                   <motion.span
                     key={i}
                     className="ch"
@@ -431,7 +431,7 @@ export function Onboarding() {
                   </motion.span>
                 ))}
                 <span className="sheen" aria-hidden="true">
-                  Umbra
+                  sungold
                 </span>
               </h1>
               <motion.p className="ob-lead" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.3, duration: 1 }}>
@@ -449,7 +449,7 @@ export function Onboarding() {
                 </button>
                 {!replay && (
                   <button className="ob-restore-link" onClick={openRestore}>
-                    <Icon name="cloud" size={15} /> {t("J'ai déjà utilisé Umbra : retrouver ma progression", "I've used Umbra before: get my progress back")}
+                    <Icon name="cloud" size={15} /> {t("J'ai déjà utilisé sungold : retrouver ma progression", "I've used sungold before: get my progress back")}
                   </button>
                 )}
               </motion.div>
@@ -461,8 +461,8 @@ export function Onboarding() {
               <h2>{t("Faisons connaissance", "Let's get acquainted")}</h2>
               <p className="ob-sub">
                 {t(
-                  "Comment Umbra peut-il vous appeler ? Votre profil reste sur ce Mac et dans votre sauvegarde : personne d'autre ne le voit.",
-                  "What should Umbra call you? Your profile stays on this Mac and in your backup: no one else sees it.",
+                  "Comment sungold peut-il vous appeler ? Votre profil reste sur ce Mac et dans votre sauvegarde : personne d'autre ne le voit.",
+                  "What should sungold call you? Your profile stays on this Mac and in your backup: no one else sees it.",
                 )}
               </p>
               <div className="ob-me">
@@ -689,14 +689,14 @@ export function Onboarding() {
                   <Icon name="cloud" size={26} />
                   <p>
                     {t(
-                      "Sur votre\u00a0Mac, Umbra sauvegarde votre progression dans un dossier « Umbra » : dans iCloud Drive, ou dans le nuage choisi dans ses Réglages (Google Drive, Dropbox…). Touchez « Choisir le dossier », trouvez ce dossier Umbra dans l'app Fichiers, puis touchez « Ouvrir » : Umbra y retrouvera tout, et pourra y revenir ensuite.",
-                      "On your\u00a0Mac, Umbra backs up your progress to a “Umbra” folder: in iCloud Drive, or in the cloud chosen in its Settings (Google Drive, Dropbox…). Tap “Choose the folder”, find that Umbra folder in the Files app, then tap “Open”: Umbra will find everything there, and can come back to it later.",
+                      "Sur votre\u00a0Mac, sungold sauvegarde votre progression dans un dossier « sungold » : dans iCloud Drive, ou dans le nuage choisi dans ses Réglages (Google Drive, Dropbox…). Touchez « Choisir le dossier », trouvez ce dossier sungold dans l'app Fichiers, puis touchez « Ouvrir » : sungold y retrouvera tout, et pourra y revenir ensuite.",
+                      "On your\u00a0Mac, sungold backs up your progress to a “sungold” folder: in iCloud Drive, or in the cloud chosen in its Settings (Google Drive, Dropbox…). Tap “Choose the folder”, find that sungold folder in the Files app, then tap “Open”: sungold will find everything there, and can come back to it later.",
                     )}
                   </p>
                   <small>
                     {t(
-                      "Google Drive ou Dropbox : leur app doit être installée sur cet appareil pour apparaître dans Fichiers. Pas de dossier Umbra ? Sur le\u00a0Mac, ouvrez Umbra › Réglages › Sauvegarde et activez la sauvegarde.",
-                      "Google Drive or Dropbox: their app must be installed on this device to show up in Files. No Umbra folder? On the\u00a0Mac, open Umbra › Settings › Backup and turn on the backup.",
+                      "Google Drive ou Dropbox : leur app doit être installée sur cet appareil pour apparaître dans Fichiers. Pas de dossier sungold ? Sur le\u00a0Mac, ouvrez sungold › Réglages › Sauvegarde et activez la sauvegarde.",
+                      "Google Drive or Dropbox: their app must be installed on this device to show up in Files. No sungold folder? On the\u00a0Mac, open sungold › Settings › Backup and turn on the backup.",
                     )}
                   </small>
                 </div>
@@ -753,9 +753,9 @@ export function Onboarding() {
                   {searchError ||
                     (backup?.icloud === false
                       ? hereName
-                        ? t(`Aucune sauvegarde d’Umbra dans ${hereName}.`, `No Umbra backup in ${hereName}.`)
-                        : t("Aucune sauvegarde d’Umbra dans ce dossier.", "No Umbra backup in this folder.")
-                      : t("Aucune sauvegarde d’Umbra dans votre iCloud Drive.", "No Umbra backup in your iCloud Drive."))}
+                        ? t(`Aucune sauvegarde de sungold dans ${hereName}.`, `No sungold backup in ${hereName}.`)
+                        : t("Aucune sauvegarde de sungold dans ce dossier.", "No sungold backup in this folder.")
+                      : t("Aucune sauvegarde de sungold dans votre iCloud Drive.", "No sungold backup in your iCloud Drive."))}
                 </p>
               )}
               {restoreError && !restoring && <p className="ob-error">{restoreError}</p>}

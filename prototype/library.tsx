@@ -1,117 +1,108 @@
+import { PageHeading } from "./ui";
 import { useEffect, useState } from "react";
 import * as Menu from "@radix-ui/react-dropdown-menu";
-import {
-  ArrowDownToLine, ArrowUpRight, AudioLines, BookOpen, Check, ChevronDown,
-  FileText, LibraryBig, ListFilter, PanelRight, Search, SlidersHorizontal,
-} from "lucide-react";
-import { Library as CollectionTools } from "../src/views/Library";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Search, Grid2X2, List, Plus, MoreHorizontal, ArrowRight, BookOpen, Headphones, Video, FileText, X } from "lucide-react";
+import { Cover, BookCover } from "../src/components/Cover";
+import { Library as OriginalLibrary } from "../src/views/Library";
+import { bookView, readBook, progressOf } from "../src/lib/playlists";
+import { titleOf, idsOf, type Entry } from "../src/views/library/entries";
 import { useApp } from "../src/lib/store";
-import { langInfo } from "../src/lib/langs";
-import type { LessonSummary, Playlist } from "../src/lib/types";
-import { api } from "./preview-api";
+import { api } from "../src/lib/api";
 
-const filters = ["All lessons", "Texts", "Audio & video", "Books", "Finished"] as const;
-type Filter = typeof filters[number];
-const sorts = ["Last opened", "Recently added", "Title"] as const;
-type Sort = typeof sorts[number];
-
-function LessonMark({ lesson }: { lesson: LessonSummary }) {
-  const Icon = lesson.has_media ? AudioLines : lesson.kind === "book" ? BookOpen : FileText;
-  return <span className={`sg-lesson-mark ${lesson.has_media ? "sg-media" : ""}`}><Icon size={19}/></span>;
-}
-
+const filters = ["All", "Books", "Texts", "Audio", "Video", "Finished"] as const;
 export function Library() {
-  const lang = useApp(state => state.lang());
-  const revision = useApp(state => state.libraryVersion);
-  const [lessons, setLessons] = useState<LessonSummary[]>([]);
-  const [books, setBooks] = useState<Playlist[]>([]);
+  const lang = useApp(s => s.lang)();
+  const revision = useApp(s => s.libraryVersion);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [filter, setFilter] = useState<typeof filters[number]>("All");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("All lessons");
-  const [sort, setSort] = useState<Sort>("Last opened");
-  const [selection, setSelection] = useState<number>();
-  const [details, setDetails] = useState(true);
+  const density = useApp(s => s.settings.library_view);
+  const layout = density === "list" ? "list" : "grid";
+  const setLayout = (value: string) => void useApp.getState().setSetting("library_view", value === "list" ? "list" : "large");
   const [manage, setManage] = useState(false);
-
+  const [rename, setRename] = useState<Entry>();
+  const [name, setName] = useState("");
+  const [deleting, setDeleting] = useState<Entry>();
+  const [error, setError] = useState("");
   useEffect(() => {
     let stale = false;
-    void Promise.all([api().lessonsList(lang), api().playlistsList(lang)]).then(([rows, playlists]) => {
-      if (!stale) { setLessons(rows); setBooks(playlists); }
-    }).catch(error => { if (!stale) useApp.getState().toast(String(error), "error"); });
+    setEntries([]);
+    void Promise.all([api().lessonsList(lang), api().playlistsList(lang)]).then(([lessons, playlists]) => {
+      const books = playlists.filter(p => p.kind === "book").map(p => bookView(p, lessons)).filter(b => b !== null);
+      const chapters = new Set(books.flatMap(b => b.ls.map(l => l.id)));
+      const items: Entry[] = [...books.map(b => ({ key: `book-${b.p.id}`, b })), ...lessons.filter(l => !chapters.has(l.id)).map(l => ({ key: `lesson-${l.id}`, l }))];
+      if (!stale) setEntries(items);
+    }).catch(cause => { if (!stale) setError(String(cause)); });
     return () => { stale = true; };
   }, [lang, revision]);
-
-  const open = (lesson: LessonSummary) => {
-    const book = books.find(item => item.kind === "book" && item.lessons.includes(lesson.id));
-    useApp.getState().openLesson(lesson.id, book ? { playlist: book.id } : undefined);
-  };
-  const scoped = lessons.filter(row => row.lang === lang);
-  const visible = scoped.filter(lesson => {
-    if (!`${lesson.title} ${lesson.collection}`.toLowerCase().includes(query.trim().toLowerCase())) return false;
-    if (filter === "Texts") return !lesson.has_media && lesson.kind !== "book";
-    if (filter === "Audio & video") return lesson.has_media;
-    if (filter === "Books") return lesson.kind === "book";
-    if (filter === "Finished") return lesson.completed;
-    return true;
-  }).sort((a, b) => sort === "Title" ? a.title.localeCompare(b.title)
-    : sort === "Recently added" ? b.created_at - a.created_at : (b.opened_at ?? 0) - (a.opened_at ?? 0));
-  const active = visible.find(row => row.id === selection) ?? visible[0];
-  const removeInspector = () => setDetails(value => !value);
-
-  return <div className="sg-library">
-    <header className="sg-titlebar">
-      <span><LibraryBig size={16}/> Library <span className="sg-slash">/</span> <span className="sg-secondary">{langInfo(lang).name}</span></span>
-      <div>
-        <button className="sg-tool" onClick={() => setManage(!manage)} aria-pressed={manage}><SlidersHorizontal size={15}/>{manage ? "Back to collection" : "Manage library"}</button>
-        <button className="sg-tool sg-tool-primary" onClick={() => useApp.getState().openImport()}><ArrowDownToLine size={15}/> Import</button>
+  const open = (entry: Entry) => entry.b ? readBook(entry.b) : useApp.getState().openLesson(entry.l.id);
+  const lessonOf = (entry: Entry) => entry.b ? entry.b.ls[0] : entry.l;
+  const done = (entry: Entry) => entry.b ? entry.b.completed : entry.l.completed;
+  const progress = (entry: Entry) => entry.b ? entry.b.progress : progressOf(entry.l);
+  const kind = (entry: Entry) => entry.b ? "Books" : lessonOf(entry).kind === "video" ? "Video" : lessonOf(entry).has_media ? "Audio" : "Texts";
+  const visible = entries.filter(entry => titleOf(entry).toLowerCase().includes(query.toLowerCase()) && (filter === "All" || (filter === "Finished" ? done(entry) : kind(entry) === filter)));
+  const resume = entries.find(entry => entry.b ? entry.b.started && !entry.b.completed : entry.l.opened_at && !entry.l.completed);
+  function art(entry: Entry) {
+    return entry.b ? <BookCover lesson={entry.b.ls[0]} title={entry.b.p.name} bare/> : <Cover lesson={entry.l} bare/>;
+  }
+  function label(entry: Entry) {
+    return entry.b ? `Book · ${entry.b.ls.length} chapters` : kind(entry) === "Audio" ? "Audio lesson" : kind(entry) === "Video" ? "Video" : "Text";
+  }
+  async function mutation(action: () => Promise<unknown>) {
+    try { await action(); useApp.getState().bumpLibrary(); setDeleting(undefined); setRename(undefined); }
+    catch (cause) { setError(String(cause)); }
+  }
+  return <div className="collection-view">
+    <PageHeading title="Library" description="Your reading and listening collection.">
+      <div className="collection-heading-actions"><button className="sg-tool" onClick={() => setManage(!manage)}>{manage ? "Back to Library" : "Organize"}</button><button className="sg-tool sg-tool-primary" onClick={() => useApp.getState().openImport()}><Plus size={16}/>Import</button></div>
+    </PageHeading>
+    {manage ? <div className="sg-manage"><OriginalLibrary/></div> : <>
+      {resume && <button className="resume-strip" onClick={() => open(resume)}>
+        <span className="resume-cover">{art(resume)}</span><span><small>Continue reading</small><strong>{titleOf(resume)}</strong></span><span className="resume-progress"><progress max="1" value={progress(resume)}/><small>{Math.round(progress(resume) * 100)}% complete</small></span><ArrowRight size={19}/>
+      </button>}
+      <div className="collection-controls"><div className="collection-filters" role="group" aria-label="Content filters">
+        {filters.map(item => <button key={item} aria-pressed={filter === item} onClick={() => setFilter(item)}>{item}</button>)}
+      </div><label className="sg-search"><Search size={15}/><input aria-label="Search collection" placeholder="Search your collection" value={query} onChange={event => setQuery(event.target.value)}/></label>
+        <div className="view-toggle" role="group" aria-label="Library layout"><button aria-label="Cover grid" aria-pressed={layout === "grid"} onClick={() => setLayout("grid")}><Grid2X2 size={16}/></button><button aria-label="Compact list" aria-pressed={layout === "list"} onClick={() => setLayout("list")}><List size={17}/></button></div>
       </div>
-    </header>
-    {manage ? <section className="sg-manage"><CollectionTools /></section> : <>
-      <div className="sg-library-heading">
-        <div><h1>Library</h1><p>{scoped.length} {scoped.length === 1 ? "lesson" : "lessons"} in {langInfo(lang).name}</p></div>
-        <label className="sg-search"><Search size={16}/><input data-find aria-label="Search lessons" placeholder="Search lessons…" value={query} onChange={event => setQuery(event.target.value)}/></label>
-      </div>
-      <div className="sg-filters">
-        <div role="group" aria-label="Lesson type">
-          {filters.map(item => <button key={item} className="sg-filter" aria-pressed={item === filter} onClick={() => setFilter(item)}>{item}</button>)}
-        </div>
-        <div>
-          <Menu.Root>
-            <Menu.Trigger className="sg-tool"><ListFilter size={15}/>{sort}<ChevronDown size={13}/></Menu.Trigger>
-            <Menu.Portal><Menu.Content className="sg-menu" align="end" sideOffset={7}>
-              <Menu.RadioGroup value={sort} onValueChange={value => setSort(value as Sort)}>
-                {sorts.map(item => <Menu.RadioItem className="sg-menu-item" key={item} value={item}>{item}<Menu.ItemIndicator className="sg-indicator"><Check size={14}/></Menu.ItemIndicator></Menu.RadioItem>)}
-              </Menu.RadioGroup>
-            </Menu.Content></Menu.Portal>
-          </Menu.Root>
-          <button className="sg-tool" aria-label="Lesson details" aria-pressed={details} onClick={removeInspector}><PanelRight size={16}/></button>
-        </div>
-      </div>
-      <div className={`sg-collection ${details ? "sg-with-details" : ""}`}>
-        <section aria-label="Lessons" className="sg-lessons">
-          <div className="sg-list-head"><span>Title</span><span>Format</span><span>Known</span></div>
-          {visible.map(lesson => <div className="sg-lesson" key={lesson.id} data-selected={lesson.id === active?.id && details}>
-            <button className="sg-lesson-title" onClick={() => {
-              if (details) setSelection(lesson.id);
-              else open(lesson);
-            }} onDoubleClick={() => open(lesson)} aria-pressed={details ? lesson.id === active?.id : undefined}>
-              <LessonMark lesson={lesson}/><span><strong dir="auto">{lesson.title}</strong><small dir="auto">{lesson.collection || lesson.excerpt}</small></span>
+      {error && <p role="alert">{error}</p>}
+      <div className={`collection-items ${layout} ${density === "small" ? "compact" : ""}`}>
+        {visible.map(entry => {
+          const Icon = entry.b ? BookOpen : kind(entry) === "Audio" ? Headphones : kind(entry) === "Video" ? Video : FileText;
+          return <article className="collection-item" key={entry.key}>
+            <button className="item-open" onClick={() => open(entry)} aria-label={`Open ${titleOf(entry)}`}>
+              <div className="item-art">{art(entry)}<span className="item-format"><Icon size={13}/>{entry.b ? "Book" : kind(entry) === "Texts" ? "Text" : kind(entry)}</span></div>
+              <div className="item-copy"><strong dir="auto">{titleOf(entry)}</strong><small>{label(entry)}</small><div className="item-progress"><progress value={progress(entry)} max="1"/><span>{done(entry) ? "Finished" : `${Math.round(progress(entry) * 100)}%`}</span></div></div>
             </button>
-            <span className="sg-format">{lesson.has_media ? "Audio" : lesson.kind === "book" ? "Chapter" : "Text"}</span>
-            <div className="sg-row-end"><span>{lesson.known_pct}%</span><button className="sg-row-open" onClick={() => open(lesson)} aria-label={`Open ${lesson.title}`}><ArrowUpRight size={16}/></button></div>
-          </div>)}
-          {!visible.length && <p className="sg-empty">No matching lessons.</p>}
-        </section>
-        {details && active && <aside className="sg-details" aria-label="Lesson details">
-          <div className="sg-detail-bar"><span>Lesson details</span><button className="sg-tool" onClick={removeInspector} aria-label="Hide lesson details"><PanelRight size={16}/></button></div>
-          <div className="sg-detail-body">
-            <LessonMark lesson={active}/>
-            <h2 dir="auto">{active.title}</h2>
-            <p dir="auto">{active.excerpt}</p>
-            <button className="sg-open" onClick={() => open(active)}><BookOpen size={16}/>{active.opened_at ? "Continue reading" : "Open reader"}<ArrowUpRight size={15}/></button>
-            <dl><div><dt>Language</dt><dd>{langInfo(lang).name}</dd></div><div><dt>Words</dt><dd>{active.word_count}</dd></div><div><dt>New words</dt><dd>{active.new_words}</dd></div><div><dt>Known words</dt><dd>{active.known_pct}%</dd></div><div><dt>Status</dt><dd>{active.completed ? "Finished" : active.opened_at ? "In progress" : "Unread"}</dd></div></dl>
-          </div>
-        </aside>}
+            <Menu.Root><Menu.Trigger className="item-menu" aria-label={`Actions for ${titleOf(entry)}`}><MoreHorizontal size={18}/></Menu.Trigger>
+              <Menu.Portal><Menu.Content className="sg-menu" align="end" sideOffset={5}>
+                <Menu.Item className="sg-menu-item" onSelect={() => open(entry)}>Open</Menu.Item>
+                {entry.b && <Menu.Item className="sg-menu-item" onSelect={() => useApp.getState().openPlaylist(entry.b!.p.id)}>View chapters</Menu.Item>}
+                <Menu.Item className="sg-menu-item" onSelect={() => { setName(titleOf(entry)); setRename(entry); }}>Rename</Menu.Item>
+                <Menu.Item className="sg-menu-item" onSelect={() => setManage(true)}>Organize / group</Menu.Item>
+                <Menu.Item className="sg-menu-item" onSelect={() => void mutation(() => api().lessonsSetCompleted(idsOf(entry), !done(entry)))}>{done(entry) ? "Mark unread" : "Mark finished"}</Menu.Item>
+                <Menu.Item className="sg-menu-item danger" onSelect={() => setDeleting(entry)}>Delete</Menu.Item>
+              </Menu.Content></Menu.Portal>
+            </Menu.Root>
+          </article>;
+        })}
       </div>
+      {!visible.length && <p className="sg-empty">No items match your search.</p>}
     </>}
+    <Dialog.Root open={!!rename || !!deleting} onOpenChange={open => { if (!open) { setRename(undefined); setDeleting(undefined); } }}>
+      <Dialog.Portal><Dialog.Overlay className="sg-dialog-overlay"/><Dialog.Content className="sg-dialog">
+        <div className="sg-dialog-head"><Dialog.Title>{rename ? "Rename" : "Delete from your library?"}</Dialog.Title><Dialog.Close aria-label="Close"><X size={17}/></Dialog.Close></div>
+        <Dialog.Description>{rename ? "Choose a title for this item." : `Delete “${deleting ? titleOf(deleting) : ""}” and its chapters from the sample workspace.`}</Dialog.Description>
+        {rename && <input aria-label="Title" value={name} onChange={event => setName(event.target.value)}/>}
+        <button className="sg-open" disabled={!!rename && !name.trim()} onClick={() => void mutation(async () => {
+          if (rename) {
+            if (rename.b) await api().playlistUpdate(rename.b.p.id, { name: name.trim() });
+            else await api().lessonUpdate(rename.l.id, { title: name.trim() });
+          }
+          if (deleting) { await api().lessonsDelete(idsOf(deleting)); if (deleting.b) await api().playlistDelete(deleting.b.p.id); }
+        })}>{rename ? "Save title" : "Delete"}</button>
+      </Dialog.Content></Dialog.Portal>
+    </Dialog.Root>
   </div>;
 }

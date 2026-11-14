@@ -1,4 +1,4 @@
-// Barre des menus du Mac : Umbra, Fichier, Édition, Présentation, Format,
+// Barre des menus du Mac : sungold, Fichier, Édition, Présentation, Format,
 // Leçon, Fenêtre, Aide. Construite ici plutôt qu'en Rust : elle parle la langue
 // de l'interface, suit l'état de l'app (coches de la vue, de la police, de la
 // couleur de la page… ; menu Leçon actif seulement dans une leçon) et ses
@@ -272,19 +272,19 @@ type Snap = ReturnType<typeof snapshot>;
 
 function appMenu(s: Snap): SubmenuOptions {
   const app = () => useApp.getState();
-  return sub("Umbra", [
+  return sub("sungold", [
     {
       item: {
         // la version est lue dans le paquet de l'app
         About: {
-          name: "Umbra",
+          name: "sungold",
           credits: t(
             "Apprendre les langues en lisant et en écoutant. Toute l'intelligence tourne sur votre Mac.",
             "Learn languages by reading and listening. All the intelligence runs on your Mac.",
           ),
         },
       },
-      text: t("À propos d’Umbra", "About Umbra"),
+      text: t("À propos de sungold", "About sungold"),
     },
     sep,
     ...(canUpdate ? [act(t("Rechercher les mises à jour…", "Check for Updates…"), () => {
@@ -296,11 +296,11 @@ function appMenu(s: Snap): SubmenuOptions {
     sep,
     { item: "Services", text: t("Services", "Services") },
     sep,
-    { item: "Hide", text: t("Masquer Umbra", "Hid’Umbra") },
+    { item: "Hide", text: t("Masquer sungold", "Hide sungold") },
     { item: "HideOthers", text: t("Masquer les autres", "Hide Others") },
     { item: "ShowAll", text: t("Tout afficher", "Show All") },
     sep,
-    { item: "Quit", text: t("Quitter Umbra", "Quit Umbra") },
+    { item: "Quit", text: t("Quitter sungold", "Quit sungold") },
   ]);
 }
 
@@ -318,7 +318,7 @@ function fileMenu(s: Snap): SubmenuOptions {
     act(t("Exporter le vocabulaire (CSV, Anki)…", "Export Vocabulary (CSV, Anki)…"), () => exportVocabulary(app().lang()), { on }),
     act(s.backup.on ? t("Sauvegarder maintenant", "Back Up Now") : t("Sauvegarder la progression…", "Back Up Progress…"), backupNow, { key: "CmdOrCtrl+S", on }),
     act(t("Afficher la sauvegarde dans le Finder", "Show Backup in Finder"), () => revealBackup(useBackup.getState().status?.dir ?? ""), { on: on && s.backup.saved }),
-    act(t("Afficher les données d’Umbra dans le Finder", "Show Umbra Data in Finder"), revealData, { on }),
+    act(t("Afficher les données de sungold dans le Finder", "Show sungold Data in Finder"), revealData, { on }),
     sep,
     { item: "CloseWindow", text: t("Fermer la fenêtre", "Close Window") },
   ]);
@@ -524,9 +524,9 @@ function helpMenu(s: Snap): SubmenuOptions {
   const on = !s.calm;
   return sub(t("Aide", "Help"), [
     act(t("Raccourcis clavier", "Keyboard Shortcuts"), openShortcuts, { key: "CmdOrCtrl+/", on }),
-    act(t("Comment marche Umbra ?", "How Umbra Works"), () => app().openGuide(0), { on }),
+    act(t("Comment marche sungold ?", "How sungold Works"), () => app().openGuide(0), { on }),
     act(t("Visite guidée", "Guided Tour"), () => app().startTour(), { on }),
-    act(t("Nouveautés d’Umbra", "What's New in Umbra"), () => app().openNews("all"), { on }),
+    act(t("Nouveautés de sungold", "What's New in sungold"), () => app().openNews("all"), { on }),
   ]);
 }
 

@@ -107,7 +107,7 @@ export function App() {
   }, [sideHidden]);
 
   useTheme();
-  // barre des menus du Mac, dans la langue d’Umbra et à jour de son état ;
+  // barre des menus du Mac, dans la langue de sungold et à jour de son état ;
   // sous Windows, ses raccourcis (Ctrl) sans barre des menus
   useAppMenu();
   useWindowsKeys();
@@ -146,7 +146,7 @@ export function App() {
       <>
         <div className="empty drag" data-tauri-drag-region style={{ height: "100%", justifyContent: "center" }}>
           <Orb size={40} />
-          <h3>{t("Umbra n'a pas pu démarrer", "Umbra couldn't start")}</h3>
+          <h3>{t("sungold n'a pas pu démarrer", "sungold couldn't start")}</h3>
           <p>{failed}</p>
         </div>
         <WindowControls />

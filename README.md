@@ -1,26 +1,23 @@
-# Umbra
+# sungold
 
-Umbra is a macOS language-learning app for reading, listening and building vocabulary from your own material. It is a fork of [Lumen](https://github.com/LivingTwice/lumen), with Hebrew support, synced YouTube captions, and playback controls designed for studying podcasts and videos.
+sungold is a macOS app for learning languages by reading, listening and practising vocabulary. It builds on Umbra and the original [Lumen](https://github.com/LivingTwice/lumen) project.
 
-[Download Umbra for Apple silicon](https://github.com/raphaelbenjamin/umbra/releases/latest)
+## Open the app on macOS
 
-## What you can do
+Double-click **sungold.app** in Finder. For everyday use, drag it into **Applications**, then open **sungold** from Spotlight. Choose **Get started** and select a study language. The first launch starts a fresh library. Use **Import** to add a text or file, then open it in the Library. Use **Training Dojo** to practise saved words.
 
-- Read in Hebrew with right-to-left layout and unpointed display, and look up words in the bundled Hebrew–English dictionary or the contextual AI dictionary.
-- Look up Mandarin words offline with CC-CEDICT and additional English definitions and pinyin from [Kaikki’s Chinese Wiktionary extract](https://kaikki.org/dictionary/Chinese/).
-- Import a YouTube episode as audio with captions, video with captions, or video transcribed by Whisper.
-- Click the speed button to cycle through 1×, 1.5×, 2× and 0.75×. Turn on three-second arrow seeking in Reading settings.
-- Right-click a learning word to mark it known, then right-click again to return it to Learning level 1. Playback rewinds 0.2 seconds when you resume a paused lesson.
-- Bring vocabulary, study activity, and lessons from the original Lumen through **Settings → Backup → Import from original Lumen**.
+sungold stores its desktop library in `~/Library/Application Support/com.raphaelbenjamin.sungold` on macOS. Backup destinations use a separate `sungold` folder. This local build uses ad hoc signing, and updates are installed by replacing the sungold app bundle.
 
-## Install and update
+## Build from source
 
-Extract the Apple silicon download and place **Umbra.app** in Applications. Once Umbra is installed, use **Umbra → Check for Updates**. Umbra verifies update signatures before replacing the installed app. It uses the same library as earlier Lumen Hebrew and Lumen 2.0 builds, and keeps its backups separate from the original Lumen.
+Install Node.js, Rust, CMake and the Xcode Command Line Tools on Apple silicon. From this checkout run:
 
-## Development
+```sh
+npm ci
+npm --prefix prototype ci
+npm run app:build -- --bundles app
+```
 
-On Apple silicon, install Node.js, Rust, CMake and the Xcode command-line tools. Run `npm ci` and `npm run app:dev`, or build an app with `npm run app:build -- --bundles app`. See the [development guide](docs/umbra.md) for library migration, media import and test details.
+Open `src-tauri/target/release/bundle/macos/sungold.app`. For the synthetic browser preview, see the [prototype guide](prototype/README.md).
 
-Maintainers publish a release by updating the app version and pushing a matching `v*` tag. The macOS release workflow builds an app and signs the updater archive using the repository’s Umbra signing secret. Keep a separate secure copy of the private key for future releases.
-
-Umbra is licensed under [GPL-3.0-or-later](LICENSE). The original Lumen project and its contributors are credited in the source.
+sungold and its original kiwi artwork are licensed under [GPL-3.0-or-later](LICENSE). The existing source retains its Umbra and Lumen attribution. See the [interface credits](prototype/THIRD_PARTY.md) for third-party components.

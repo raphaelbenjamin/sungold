@@ -1,2 +1,2 @@
-/* Affiché par macOS quand Umbra demande l'accès à iCloud Drive (ou à Dropbox, Google Drive…) pour la sauvegarde */
-"NSFileProviderDomainUsageDescription" = "Umbra sauvegarde votre progression (mots, leçons, réglages) dans votre iCloud Drive ou le dossier choisi, pour qu'elle ne se perde jamais.";
+/* Affiché par macOS quand sungold demande l'accès à iCloud Drive (ou à Dropbox, Google Drive…) pour la sauvegarde */
+"NSFileProviderDomainUsageDescription" = "sungold sauvegarde votre progression (mots, leçons, réglages) dans votre iCloud Drive ou le dossier choisi, pour qu'elle ne se perde jamais.";

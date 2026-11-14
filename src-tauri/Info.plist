@@ -8,9 +8,9 @@
 		<string>en</string>
 		<string>fr</string>
 	</array>
-	<!-- affiché par macOS quand Lumen demande l'accès à iCloud Drive (ou à Dropbox, Google Drive…) pour la sauvegarde ;
+	<!-- affiché par macOS quand sungold demande l'accès à iCloud Drive (ou à Dropbox, Google Drive…) pour la sauvegarde ;
 	     traduit dans locales/*.lproj/InfoPlist.strings, ce texte-ci sert pour les autres langues du système -->
 	<key>NSFileProviderDomainUsageDescription</key>
-	<string>Lumen backs up your progress (words, lessons, settings) to your iCloud Drive or the folder you chose, so that it's never lost.</string>
+	<string>sungold backs up your progress (words, lessons, settings) to your iCloud Drive or the folder you chose, so that it's never lost.</string>
 </dict>
 </plist>

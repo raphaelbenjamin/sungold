@@ -1,6 +1,8 @@
 import type { Api } from "../src/lib/api";
 import { createMockApi } from "../src/lib/mock";
 import { cleanWord, garden, languageCodes, lessons, type Word } from "./data";
+import { tokenize } from "../src/lib/tokenize";
+import { sampleCover } from "./sample-covers";
 import cues from "./cues.json";
 
 export const isTauri = false;
@@ -15,6 +17,11 @@ const lookup = new Map<string, Word>(lessons.flatMap(lesson => lesson.pages.flat
 
 const browserApi: Api = {
   ...mock,
+  async dictLookup(lang, word, after) {
+    const fixture = lookup.get(`${lang}/${cleanWord(word)}`);
+    if (fixture) return { entries: [{ word: cleanWord(word), pos: "", ipa: fixture.pronunciation || "", glosses: [fixture.gloss] }] };
+    return mock.dictLookup(lang, word, after);
+  },
   async trainingGenerate(lang, task, words) {
     return words.flatMap(({ term, context }, index) => {
       const gloss = lookup.get(`${lang}/${cleanWord(term)}`)?.gloss;
@@ -59,16 +66,23 @@ export async function seedPreview(design: string) {
   await set("lang", "it");
   await set("langs", "it,he,zh");
   await set("word_panel", "side");
+  await set("read_font", "newsreader");
   await set("backup_snooze", String(Date.now() / 1000));
   await set("guide_seen", "1");
-  await set("library_view", design === "studio" ? "list" : "large");
+  await set("library_view", "large");
 
   const gardenChapters: number[] = [];
   for (const lesson of lessons) {
     const lang = languageCodes[lesson.language];
     for (const [index, words] of lesson.pages.entries()) {
       const separator = lang === "zh" ? "" : " ";
-      const text = words.map(word => word.text).join(separator);
+      const paragraph = words.map(word => word.text).join(separator);
+      const text = lesson === garden && index === 0
+        ? paragraph + "\n\n" + garden.pages[1].map(word => word.text).join(" ") +
+          "\n\nTra gli alberi, una donna legge il giornale. Un bambino segue una farfalla lungo il sentiero. Nessuno ha fretta. Anche i rumori della strada sembrano lontani." +
+          "\n\nMi piace questo momento della giornata. La luce passa tra le foglie e disegna piccole ombre sulla panchina. Penso alle cose che voglio fare, poi chiudo il quaderno e resto ancora un po’." +
+          "\n\n" + garden.pages[2].map(word => word.text).join(" ")
+        : paragraph;
       const audio = lesson === garden;
       let offset = 0;
       const timings = audio ? JSON.stringify(words.map(({ text: word }, position) => {
@@ -105,5 +119,19 @@ export async function seedPreview(design: string) {
     ["A letter from Bologna", "Cara Anna, oggi ho visitato il mercato e ho comprato delle pesche."],
     ["An afternoon at the station", "Il treno è in ritardo. Leggo qualche pagina mentre aspetto sul binario."],
   ]) await mock.lessonCreate({ lang: "it", title, text, kind: "text" });
+  await mock.bookCreate({
+    lang: "it", title: "Letters from Bologna", kind: "book", source: "",
+    chapters: [{ title: "The first letter", text: "Cara Anna, la città è tranquilla questa mattina. Cammino sotto i portici e guardo le vetrine." }, { title: "Sunday", text: "Domenica andiamo al parco. Porto un libro e qualcosa da mangiare." }],
+  }, sampleCover("Letters from Bologna", 4));
+  await mock.lessonCreate({ lang: "it", title: "A walk through Florence", text: garden.pages[0].map(word => word.text).join(" "), kind: "video", media_path: "/media/garden-0.mp3" });
+  await mock.lessonCreate({ lang: "it", title: "Slow Italian · Morning rituals", collection: "Slow Italian podcast", kind: "audio", text: garden.pages[0].map(word => word.text).join(" "), media_path: "/media/garden-0.mp3" });
+  const sampleLessons = await mock.lessonsList("it");
+  for (const [index, lesson] of sampleLessons.entries()) {
+    await mock.lessonSetCover(lesson.id, sampleCover(lesson.collection || lesson.title, index), "jpg");
+  }
+  const reading = await mock.lessonOpen(gardenChapters[0]);
+  const known = tokenize(reading.lesson.text, "it").filter(token => token.w && !["mattina", "giardino", "panchina", "farfalla", "quaderno"].includes(token.k)).map(token => token.k);
+  await mock.termsMarkKnown("it", [...new Set(known)], 0);
+  await mock.lessonUpdate(gardenChapters[0], { position: 3 });
   await mock.lessonOpen(gardenChapters[0]);
 }

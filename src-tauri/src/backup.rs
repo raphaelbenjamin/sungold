@@ -37,8 +37,7 @@ use crate::media::{self, ImportEvent};
 use crate::state::AppState;
 use crate::user;
 
-const ROOT_NAME: &str = "Umbra";
-const LEGACY_ROOT_NAME: &str = "Lumen Hebrew";
+const ROOT_NAME: &str = "sungold";
 const MEDIA: &str = "Médias";
 const HISTORY: &str = "Historique";
 const SNAPSHOT: &str = "Progression.lumen";
@@ -150,7 +149,7 @@ pub struct Status {
     /// réglage `backup_on` : "1" active, "0" coupée, "" pas encore choisie
     pub enabled: bool,
     pub decided: bool,
-    /// dossier « Umbra » de la sauvegarde (aucun : ni iCloud Drive ni dossier choisi)
+    /// dossier « sungold » de la sauvegarde (aucun : ni iCloud Drive ni dossier choisi)
     pub dir: Option<String>,
     pub icloud: bool,
     pub icloud_available: bool,
@@ -230,24 +229,26 @@ pub fn icloud_drive() -> Option<PathBuf> {
     p.is_dir().then_some(p)
 }
 
-/// Umbra's backup folder, with compatibility for a backup already on disk.
+/// Resolve only the sungold backup folder. Legacy backups belong to other apps.
 pub fn root(custom: &str) -> Option<PathBuf> {
     let custom = custom.trim();
     let folder = if custom.is_empty() { icloud_drive()? } else { PathBuf::from(custom) };
-    let destination = if folder.file_name().is_some_and(|name| name == ROOT_NAME || name == LEGACY_ROOT_NAME) {
+    let destination = if folder.file_name().is_some_and(|name| name == ROOT_NAME) {
         folder
     } else {
-        let current = folder.join(ROOT_NAME);
-        let legacy = folder.join(LEGACY_ROOT_NAME);
-        if !current.exists() && std::fs::symlink_metadata(&legacy).is_ok() { legacy } else { current }
+        folder.join(ROOT_NAME)
     };
     let parent = destination.parent()?;
     let resolved = parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf());
-    if resolved.components().any(|part| {
+    let belongs_to_other_app = |path: &Path| path.components().any(|part| {
         part.as_os_str().to_str().is_some_and(|name| {
-            name.eq_ignore_ascii_case("Lumen") || name.eq_ignore_ascii_case("app.lumen.reader")
+            ["Umbra", "Lumen", "Lumen Hebrew", "com.raphaelbenjamin.umbra", "com.raphaelbenjamin.lumenhebrew", "app.lumen.reader"]
+                .iter().any(|other| name.eq_ignore_ascii_case(other))
         })
-    }) || std::fs::symlink_metadata(&destination).is_ok_and(|m| m.is_symlink()) {
+    });
+    if belongs_to_other_app(parent) || belongs_to_other_app(&resolved)
+        || std::fs::symlink_metadata(&destination).is_ok_and(|m| m.is_symlink())
+    {
         return None;
     }
     Some(destination)
@@ -266,7 +267,7 @@ pub struct Place {
     pub name: String,
     /// compte (adresse, équipe) : il peut y en avoir plusieurs pour un même service
     pub account: Option<String>,
-    /// dossier qui recevra « Umbra » (à passer par `place_dir`) ; vide : iCloud Drive
+    /// dossier qui recevra « sungold » (à passer par `place_dir`) ; vide : iCloud Drive
     pub path: String,
 }
 
@@ -1315,8 +1316,8 @@ fn prefs(c: &Connection) -> Prefs {
 fn no_place() -> String {
     if cfg!(target_os = "ios") {
         return crate::i18n::t(
-            "Choisissez le dossier « Umbra » où votre Mac sauvegarde (iCloud Drive, Google Drive, Dropbox…), dans Réglages › Sauvegarde.",
-            "Choose the “Umbra” folder your Mac backs up to (iCloud Drive, Google Drive, Dropbox…), in Settings › Backup.",
+            "Choisissez le dossier « sungold » où votre Mac sauvegarde (iCloud Drive, Google Drive, Dropbox…), dans Réglages › Sauvegarde.",
+            "Choose the “sungold” folder your Mac backs up to (iCloud Drive, Google Drive, Dropbox…), in Settings › Backup.",
         )
         .into();
     }
@@ -1380,7 +1381,7 @@ fn friendly(e: &anyhow::Error, place: &Place, what: (&'static str, &'static str)
     e.to_string()
 }
 
-/// Dossier « Umbra » de la sauvegarde, avec l'accès qu'il demande. Sur iPhone et
+/// Dossier « sungold » de la sauvegarde, avec l'accès qu'il demande. Sur iPhone et
 /// iPad, le dossier vient de l'app Fichiers : iOS n'y laisse entrer que par son
 /// signet, le temps du travail (l'accès se referme avec `Root`).
 struct Root {
@@ -2193,8 +2194,9 @@ mod tests {
         assert_eq!(folder_key(Path::new("/x/Médias")), None);
         assert_eq!(key_of("0123456789ab", "ba9876543210"), "012345ba9876");
         assert!(is_day("2026-10-03") && !is_day("2026-1-03") && !is_day("../../x"));
-        assert_eq!(root("/Users/x/Dropbox").unwrap(), PathBuf::from("/Users/x/Dropbox/Umbra"));
-        assert_eq!(root("/Volumes/Clé/Lumen Hebrew").unwrap(), PathBuf::from("/Volumes/Clé/Lumen Hebrew"));
+        assert_eq!(root("/Users/x/Dropbox").unwrap(), PathBuf::from("/Users/x/Dropbox/sungold"));
+        assert!(root("/Volumes/Clé/Lumen Hebrew").is_none());
+        assert!(root("/Volumes/Clé/Umbra").is_none());
         assert!(root("/Volumes/Clé/Lumen").is_none());
     }
 

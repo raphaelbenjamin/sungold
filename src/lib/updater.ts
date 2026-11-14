@@ -1,9 +1,7 @@
 import type { Update } from "@tauri-apps/plugin-updater";
 import { create } from "zustand";
-import { isTauri } from "./api";
-import { isMobile, isWindows } from "./platform";
 
-export const canUpdate = isTauri && !isMobile && !isWindows;
+export const canUpdate: boolean = false;
 type Phase = "idle" | "checking" | "available" | "installing" | "ready" | "current" | "error";
 
 interface UpdateState {

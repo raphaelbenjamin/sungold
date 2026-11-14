@@ -1,11 +1,11 @@
 {
-  "name": "umbra",
+  "name": "sungold",
   "private": true,
   "version": "2.0.24",
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/raphaelbenjamin/umbra.git"
+    "url": "https://github.com/raphaelbenjamin/sungold.git"
   },
   "type": "module",
   "scripts": {
@@ -16,7 +16,9 @@
     "sidecar": "node scripts/build-sidecar.mjs",
     "tauri": "tauri",
     "app:dev": "npm run sidecar && tauri dev",
-    "app:build": "npm run sidecar && tauri build"
+    "app:build": "npm run sidecar && tauri build",
+    "sungold:dev": "vite --config prototype/vite.config.mjs --mode desktop",
+    "sungold:build": "tsc -p prototype/tsconfig.json && vite build --config prototype/vite.config.mjs --mode desktop"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

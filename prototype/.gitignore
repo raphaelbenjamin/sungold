@@ -3,3 +3,6 @@ public/*
 !public/media/
 public/media/*
 !public/media/*.mp3
+
+!public/kiwi.svg
+/checkpoints/
